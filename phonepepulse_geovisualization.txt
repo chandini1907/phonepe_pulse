@@ -1,0 +1,84 @@
+#Once created the clone of GIT-HUB repository then,
+#import required libraries for the program
+
+import pandas as pd
+import json
+import os
+import sqlite3
+import streamlit as st
+import plotly.express as px
+
+
+
+#This is to direct the path to get the data as states
+
+path="/content/pulse/data/aggregated/transaction/country/india/state"
+Agg_state_list=os.listdir(path)
+Agg_state_list
+#Agg_state_list--> to get the list of states in India
+
+#------------------------------------------------------->
+#This is to extract the data's to create a dataframe
+
+content={'State':[], 'Year':[],'Quater':[],'Transacion_type':[], 'Transacion_count':[], 'Transacion_amount':[]}
+for i in Agg_state_list:
+    p_i=path+i+"/"
+    Agg_yr=os.listdir(p_i)    
+    for j in Agg_yr:
+        p_j=p_i+j+"/"
+        Agg_yr_list=os.listdir(p_j)        
+        for k in Agg_yr_list:
+            p_k=p_j+k
+            Data=open(p_k,'r')
+            D=json.load(Data)
+            for z in D['data']['transactionData']:
+              Name=z['name']
+              count=z['paymentInstruments'][0]['count']
+              amount=z['paymentInstruments'][0]['amount']
+              content['Transacion_type'].append(Name)
+              content['Transacion_count'].append(count)
+              content['Transacion_amount'].append(amount)
+              content['State'].append(i)
+              content['Year'].append(j)
+              content['Quater'].append(int(k.strip('.json')))
+#Succesfully created a dataframe
+df=pd.DataFrame(content)
+df
+#---------------------------------------------------------------------->
+# Save the DataFrame as a CSV file
+df.to_csv("dataframe.csv", index=False)
+
+#----------------------------------------------------------------------->
+#connect to mysql and create table
+
+df = pd.read_csv('dataframe.csv')  
+table_name = 'phonepe_datas'
+
+conn = sqlite3.connect('mydb.sqlite')
+query = f'Create table if not Exists {phonepe_datas} (state text, year text, Quater text,Type text,count text,amount text)'
+conn.execute(query)
+df.to_sql(phonepe_datas,conn,if_exists='replace',index=False)
+conn.commit()
+conn.close()
+
+#--------------------------------------------------------------------------->
+#create dashboard using streamlit and plotly
+
+
+
+conn = sqlite3.connect('database.db')#-------------------------?
+cursor = conn.cursor()
+query = 'SELECT * FROM phonepe_datas'
+data = cursor.execute(query).fetchall()
+
+#dashboard title
+st.title('Geo Visualization of SQLite Data')
+
+#Visualize data in geo form
+fig = px.scatter_mapbox(df, lat='latitude', lon='longitude', hover_name='column1', color='column2')
+st.plotly_chart(fig)
+conn.close()
+if __name__ == '__main__':
+    st.run()
+
+
